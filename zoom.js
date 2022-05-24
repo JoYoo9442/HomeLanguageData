@@ -8,7 +8,8 @@ var margin = {
     width = width - margin.left - margin.right,
     mapRatio = 0.5,
     height = width * mapRatio,
-    active = d3.select(null);
+    activeState = d3.select(null);
+    activeCounty = d3.select(null);
 
 var svg = d3.select('.viz').append('svg')
     .attr('class', 'center-container')
@@ -25,9 +26,6 @@ var div = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
 
-Promise.resolve(d3.json('us.topojson'))
-    .then(ready);
-
 var projection = d3.geoAlbersUsa()
     .translate([width /2 , height / 2])
     .scale(width)
@@ -41,8 +39,123 @@ var g = svg.append("g")
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom)
 
+var filePathList = [
+    './CensusData/2010Data.json', 
+    './CensusData/2011Data.json', 
+    './CensusData/2012Data.json', 
+    './CensusData/2013Data.json', 
+    './CensusData/2014Data.json', 
+    './CensusData/2015Data.json', 
+    './CensusData/2016Data.json', 
+    './CensusData/2017Data.json', 
+    './CensusData/2018Data.json', 
+    './CensusData/2019Data.json', 
+    './CensusData/2020Data.json', 
+    'us.topojson' 
+];
 
-function ready(us) {
+var promises = [];
+
+filePathList.forEach(filePath => {
+    promises.push(d3.json(filePath))
+});
+
+Promise.all(promises).then(ready);
+
+function ready(languageDatas) {
+    console.log(languageDatas);
+
+    var us = languageDatas.pop();
+
+    var currentData = languageDatas[10];
+
+    console.log(currentData);
+
+    pairLanguageToId = {};
+    
+    let currentStateId = currentData["GEO_ID"][1].substr(0,2);
+
+    let stateLanguageList = {
+        "spanish": 0,
+        "indoEuropean": 0,
+        "asianPacific": 0,
+        "other": 0
+    }
+
+    for (index in currentData["GEO_ID"]) {
+        if (index == 0) {
+            continue;
+        }
+
+        if (currentStateId == currentData["GEO_ID"][index].substr(0,2)) {
+            stateLanguageList['spanish'] += currentData['S1601_C01_004E'][index];
+            stateLanguageList['indoEuropean'] += currentData['S1601_C01_008E'][index];
+            stateLanguageList['asianPacific'] += currentData['S1601_C01_012E'][index];
+            stateLanguageList['other'] += currentData['S1601_C01_016E'][index];
+        }
+        else {
+            let result = getKeyByValue(stateLanguageList, Math.max(...Object.values(stateLanguageList)))
+
+            if (result == "spanish") {
+                pairLanguageToId[parseInt(currentStateId)] =  "Spanish";
+            }
+            else if (result == "indoEuropean") {
+                pairLanguageToId[parseInt(currentStateId)] =  "Other Indo-European Languages";
+            }
+            else if (result == "asianPacific") {
+                pairLanguageToId[parseInt(currentStateId)] =  "Asian and Pacific Island Languages";
+            }
+            else {
+                pairLanguageToId[parseInt(currentStateId)] =  "Other Languages";
+            }
+
+            currentStateId = currentData["GEO_ID"][index].substr(0,2);
+
+            stateLanguageList = {
+                "spanish": 0,
+                "indoEuropean": 0,
+                "asianPacific": 0,
+                "other": 0
+            }
+
+            stateLanguageList['spanish'] += currentData['S1601_C01_004E'][index];
+            stateLanguageList['indoEuropean'] += currentData['S1601_C01_008E'][index];
+            stateLanguageList['asianPacific'] += currentData['S1601_C01_012E'][index];
+            stateLanguageList['other'] += currentData['S1601_C01_016E'][index];
+        }
+    }
+
+    for (index in currentData["GEO_ID"]) {
+        if (index == 0) {
+            continue;
+        }
+        let language_list = {
+            "spanish": 0,
+            "indoEuropean": 0,
+            "asianPacific": 0,
+            "other": 0
+        }
+
+        language_list['spanish'] += currentData['S1601_C01_004E'][index];
+        language_list['indoEuropean'] += currentData['S1601_C01_008E'][index];
+        language_list['asianPacific'] += currentData['S1601_C01_012E'][index];
+        language_list['other'] += currentData['S1601_C01_016E'][index];
+
+        let result = getKeyByValue(language_list, Math.max(...Object.values(language_list)))
+
+        if (result == "spanish") {
+            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Spanish";
+        }
+        else if (result == "indoEuropean") {
+            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Other Indo-European Languages";
+        }
+        else if (result == "asianPacific") {
+            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Asian and Pacific Island Languages";
+        }
+        else {
+            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Other Languages";
+        }
+    }
 
     d3.selection.prototype.moveToFront = function() {
             return this.each(function(){
@@ -78,7 +191,9 @@ function ready(us) {
         .enter().append("path")
         .attr("d", path)
         .attr("class", "state")
-        .on("click", zoomState);
+        .on("click", zoomState)
+        .on("mouseover", showTooltip)
+        .on("mouseout", hideTooltip);
 
 
     g.append("path")
@@ -87,23 +202,67 @@ function ready(us) {
         .attr("d", path);
 
 }
+
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
+}
+
 function showTooltip(d) {
-    var sel = d3.select(this);
-    sel.moveToFront();
-    d3.select(this).transition().duration(300).style({'opacity': 1, 'stroke': 'black', 'stroke-width': 1.5});
+    console.log(d.id);
     div.transition().duration(300)
         .style("opacity", 1)
-    div.html(`${d.name} : ${d.id}`)
+    div.text(d.properties.name + ": " + pairLanguageToId[d.id])
         .style("left", (event.clientX) + "px")
         .style("top", (event.clientY -30) + "px");
+}
+
+function highestLanguage(d) {
+    if (d3.select(this).classed("state")) {
+        county_list = [];
+        let id = toString(d.id);
+        if (id.length < 2) {
+            id = "0"+id
+        }
+        for (let county_id in currentData["GEO_ID"]) {
+            if (county_id.substr(0,2) == id) {
+                county_list.push(county_id);
+            }
+        }
+
+        let language_list = {
+            "spanish": 0,
+            "indoEuropean": 0,
+            "asianPacific": 0,
+            "other": 0
+        }
+
+        county_list.forEach(county_id => {
+            language_list['spanish'] += currentData['S1601_C01_004E'][getKeyByValue(currentData, county_id)];
+            language_list['indoEuropean'] += currentData['S1601_C01_008E'][getKeyByValue(currentData, county_id)];
+            language_list['asianPacific'] += currentData['S1601_C01_012E'][getKeyByValue(currentData, county_id)];
+            language_list['other'] += currentData['S1601_C01_016E'][getKeyByValue(currentData, county_id)];
+        });
+
+        let result = getKeyByValue(language_list, Math.max(Object.values(language_list)))
+
+        if (result == "spanish") {
+            highLanguage =  "Spanish";
+        }
+        else if (result == "indoEuropean") {
+            highLanguage =  "Other Indo-European Languages";
+        }
+        else if (result == "asianPacific") {
+            highLanguage =  "Asian and Pacific Island Languages";
+        }
+        else {
+            highLanguage =  "Other Languages";
+        }
+    }
 }
 
 function hideTooltip(d) {
     var sel = d3.select(this);
     sel.moveToBack();
-    d3.select(this)
-        .transition().duration(300)
-        .style({'opacity': 0.8, 'stroke': 'white', 'stroke-width': 1});
     div.transition().duration(300)
         .style("opacity", 0);
 }
@@ -111,10 +270,10 @@ function hideTooltip(d) {
 function zoomState(d) {
     if (d3.select('.background').node() === this) return reset();
 
-    if (active.node() === this) return;
+    if (activeState.node() === this) return reset();
 
-    active.classed("active", false);
-    active = d3.select(this).classed("active", true);
+    activeState.classed("active", false);
+    activeState = d3.select(this).classed("active", true);
 
     var bounds = path.bounds(d),
         dx = bounds[1][0] - bounds[0][0],
@@ -131,9 +290,11 @@ function zoomState(d) {
 }
 
 function zoomCounty(d) {
-    if (active.node() === this) return reset();
+    if (activeCounty.node() === this) return reset();
     if (d3.select('.background').node() === this) return reset();
 
+    activeCounty.classed("active", false);
+    activeCounty = d3.select(this).classed("active", true);
 
     var bounds = path.bounds(d),
         dx = bounds[1][0] - bounds[0][0],
@@ -151,8 +312,10 @@ function zoomCounty(d) {
 
 
 function reset() {
-    active.classed("active", false);
-    active = d3.select(null);
+    activeState.classed("active", false);
+    activeCounty.classed("active", false);
+    activeState = d3.select(null);
+    activeCounty = d3.select(null);
 
     g.transition()
         .delay(100)

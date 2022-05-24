@@ -20,16 +20,18 @@
     pointer-events: none;
 }
 
+#counties {
+    fill: #aaa;
+}
+
+#counties .active {}
+
 .county-boundary {
     fill: #aaa;
     stroke: #fff;
     stroke-width: .5px;
     font: 14px sans-serif;
     font-weight: bold;
-}
-
-.county-boundary .active {
-    display:none;
 }
 
 .county-boundary:hover, .state:hover {
