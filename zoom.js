@@ -26,6 +26,29 @@ var div = d3.select("body").append("div")
         .attr("class", "tooltip")
         .style("opacity", 0);
 
+var filePathList = [
+    './CensusData/2010Data.json', 
+    './CensusData/2011Data.json', 
+    './CensusData/2012Data.json', 
+    './CensusData/2013Data.json', 
+    './CensusData/2014Data.json', 
+    './CensusData/2015Data.json', 
+    './CensusData/2016Data.json', 
+    './CensusData/2017Data.json', 
+    './CensusData/2018Data.json', 
+    './CensusData/2019Data.json', 
+    './CensusData/2020Data.json', 
+    './us-counties.json' 
+];
+
+var promises = [];
+
+filePathList.forEach(filePath => {
+    promises.push(d3.json(filePath))
+});
+
+Promise.all(promises).then(ready);
+
 var projection = d3.geoAlbersUsa()
     .translate([width /2 , height / 2])
     .scale(width)
@@ -39,29 +62,6 @@ var g = svg.append("g")
     .attr('width', width + margin.left + margin.right)
     .attr('height', height + margin.top + margin.bottom)
 
-var filePathList = [
-    './CensusData/2010Data.json', 
-    './CensusData/2011Data.json', 
-    './CensusData/2012Data.json', 
-    './CensusData/2013Data.json', 
-    './CensusData/2014Data.json', 
-    './CensusData/2015Data.json', 
-    './CensusData/2016Data.json', 
-    './CensusData/2017Data.json', 
-    './CensusData/2018Data.json', 
-    './CensusData/2019Data.json', 
-    './CensusData/2020Data.json', 
-    'us.topojson' 
-];
-
-var promises = [];
-
-filePathList.forEach(filePath => {
-    promises.push(d3.json(filePath))
-});
-
-Promise.all(promises).then(ready);
-
 function ready(languageDatas) {
     console.log(languageDatas);
 
@@ -72,6 +72,8 @@ function ready(languageDatas) {
     console.log(currentData);
 
     pairLanguageToId = {};
+
+    pairNumbersToId = {};
     
     let currentStateId = currentData["GEO_ID"][1].substr(0,2);
 
@@ -97,17 +99,19 @@ function ready(languageDatas) {
             let result = getKeyByValue(stateLanguageList, Math.max(...Object.values(stateLanguageList)))
 
             if (result == "spanish") {
-                pairLanguageToId[parseInt(currentStateId)] =  "Spanish";
+                pairLanguageToId[currentStateId] =  "Spanish";
             }
             else if (result == "indoEuropean") {
-                pairLanguageToId[parseInt(currentStateId)] =  "Other Indo-European Languages";
+                pairLanguageToId[currentStateId] =  "Other Indo-European Languages";
             }
             else if (result == "asianPacific") {
-                pairLanguageToId[parseInt(currentStateId)] =  "Asian and Pacific Island Languages";
+                pairLanguageToId[currentStateId] =  "Asian and Pacific Island Languages";
             }
             else {
-                pairLanguageToId[parseInt(currentStateId)] =  "Other Languages";
+                pairLanguageToId[currentStateId] =  "Other Languages";
             }
+
+            pairNumbersToId[currentStateId] = stateLanguageList;
 
             currentStateId = currentData["GEO_ID"][index].substr(0,2);
 
@@ -144,17 +148,19 @@ function ready(languageDatas) {
         let result = getKeyByValue(language_list, Math.max(...Object.values(language_list)))
 
         if (result == "spanish") {
-            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Spanish";
+            pairLanguageToId[currentData["GEO_ID"][index]] =  "Spanish";
         }
         else if (result == "indoEuropean") {
-            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Other Indo-European Languages";
+            pairLanguageToId[currentData["GEO_ID"][index]] =  "Other Indo-European Languages";
         }
         else if (result == "asianPacific") {
-            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Asian and Pacific Island Languages";
+            pairLanguageToId[currentData["GEO_ID"][index]] =  "Asian and Pacific Island Languages";
         }
         else {
-            pairLanguageToId[parseInt(currentData["GEO_ID"][index])] =  "Other Languages";
+            pairLanguageToId[currentData["GEO_ID"][index]] =  "Other Languages";
         }
+
+        pairNumbersToId[currentData["GEO_ID"][index]] = language_list;
     }
 
     d3.selection.prototype.moveToFront = function() {
@@ -214,50 +220,19 @@ function showTooltip(d) {
     div.text(d.properties.name + ": " + pairLanguageToId[d.id])
         .style("left", (event.clientX) + "px")
         .style("top", (event.clientY -30) + "px");
-}
+//    div.text("Spanish: " + pairNumbersToId[d.id]["spanish"])
+//        .style("left", (event.clientX) + "px")
+//        .style("top", (event.clientY -30) + "px");
+//    div.text("Other Indo-European Languages: " + pairNumbersToId[d.id]["indoEuropean"])
+//        .style("left", (event.clientX) + "px")
+//        .style("top", (event.clientY -30) + "px");
+//    div.text("Asian and Pacific Island Languages: " + pairNumbersToId[d.id]["asianPacific"])
+//        .style("left", (event.clientX) + "px")
+//        .style("top", (event.clientY -30) + "px");
+//    div.text("Other Languages: " + pairNumbersToId[d.id]["other"])
+//        .style("left", (event.clientX) + "px")
+//        .style("top", (event.clientY -30) + "px");
 
-function highestLanguage(d) {
-    if (d3.select(this).classed("state")) {
-        county_list = [];
-        let id = toString(d.id);
-        if (id.length < 2) {
-            id = "0"+id
-        }
-        for (let county_id in currentData["GEO_ID"]) {
-            if (county_id.substr(0,2) == id) {
-                county_list.push(county_id);
-            }
-        }
-
-        let language_list = {
-            "spanish": 0,
-            "indoEuropean": 0,
-            "asianPacific": 0,
-            "other": 0
-        }
-
-        county_list.forEach(county_id => {
-            language_list['spanish'] += currentData['S1601_C01_004E'][getKeyByValue(currentData, county_id)];
-            language_list['indoEuropean'] += currentData['S1601_C01_008E'][getKeyByValue(currentData, county_id)];
-            language_list['asianPacific'] += currentData['S1601_C01_012E'][getKeyByValue(currentData, county_id)];
-            language_list['other'] += currentData['S1601_C01_016E'][getKeyByValue(currentData, county_id)];
-        });
-
-        let result = getKeyByValue(language_list, Math.max(Object.values(language_list)))
-
-        if (result == "spanish") {
-            highLanguage =  "Spanish";
-        }
-        else if (result == "indoEuropean") {
-            highLanguage =  "Other Indo-European Languages";
-        }
-        else if (result == "asianPacific") {
-            highLanguage =  "Asian and Pacific Island Languages";
-        }
-        else {
-            highLanguage =  "Other Languages";
-        }
-    }
 }
 
 function hideTooltip(d) {

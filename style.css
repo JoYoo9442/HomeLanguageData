@@ -20,9 +20,7 @@
     pointer-events: none;
 }
 
-#counties {
-    fill: #aaa;
-}
+#counties {}
 
 #counties .active {}
 
@@ -38,26 +36,6 @@
     fill: pink;
 }
 
-path {
-	 	stroke:white;
-	 	stroke-width: 1px;
-	}
-	 
-body {
-    font-family: 'Proxima Nova', sans-serif;
-}
-    
-.legend {
-    font-size: 14px;
-    font-family: 'Proxima Nova', sans-serif;
-}
-
-.legend_title {
-    font-size: 14px;
-    font-family: 'Proxima Nova', sans-serif;
-    font-weight: bold;
-}
-    
 div.tooltip {
     position: absolute;
     left: 75px;
@@ -68,16 +46,4 @@ div.tooltip {
     background: #FFFFFF;
     border: 1px solid #989898;
     pointer-events: none;
-}
-
-p {
-    font-family: 'Proxima Nova', sans-serif;
-    font-size:10px;
-    margin: 20px 0 0 10px;
-}
-
-@media (max-width: 400px) {
-.d3map {
-    display: none;
-}
 }
